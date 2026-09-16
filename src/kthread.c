@@ -5,12 +5,12 @@ kthread_t *curthr;
 /*
  * TODO: implement me!
  * Hints: we don't have any threads running yet... but what from the thread
- * subsystem needs ot be initialized?
+ * subsystem needs to be initialized?
  */
-void kthread_init() {
-
+void kthread_init()
+{
+    slab_allocator_init(&kthread_allocator, sizeof(kthread_t));
 }
-
 
 /*
  * TODO: implement me!
@@ -25,8 +25,36 @@ void kthread_init() {
  *   - return NULL if allocation not possible
  */
 kthread_t *kthread_create(proc_t *proc, kthread_func_t func, long arg1,
-                          void *arg2) {
-    return NULL;
+                          void *arg2)
+{
+    slab_allocator_init(&kthread_allocator, sizeof(kthread_t));
+    kthread_t *new_kthread = slab_obj_alloc(kthread_allocator);
+
+    new_kthread->kt_kstack = page_alloc_n(DEFAULT_STACK_SIZE_PAGES);
+    new_kthread->kt_retval = NULL;
+    new_kthread->kt_errno = NULL;
+
+    context_setup(&new_kthread->kt_ctx, func, arg1, arg2,
+                  new_kthread->kt_kstack, DEFAULT_STACK_SIZE_PAGES, NULL); // TODO: check page table stuff
+
+    new_kthread->kt_proc = proc;
+
+    new_kthread->kt_cancelled = 0;
+    new_kthread->kt_state = KT_RUNNABLE; // ?
+
+    spinlock_init(&new_kthread->kt_lock);
+
+    // add thread to process thread list
+    list_link_init(&new_kthread->kt_plink, new_kthread);
+    spinlock_lock(&proc->p_threads_lock);
+    list_insert(&proc->p_threads, &new_kthread->kt_plink);
+    spinlock_unlock(&proc->p_threads_lock);
+
+    // add thread to thread queue to be processed
+    list_link_init(&new_kthread->kt_qlink, new_kthread);
+    spinlock_lock(&kt_runq.tq_lock);
+    list_insert(&kt_runq.tq_list, &new_kthread->kt_qlink);
+    spinlock_unlock(&kt_runq.tq_lock);
 }
 
 /*
@@ -40,7 +68,8 @@ kthread_t *kthread_create(proc_t *proc, kthread_func_t func, long arg1,
  *   - remember to protect access to the thread via its spinlock
  *   - see kthread_create for more hints!
  */
-kthread_t *kthread_clone(kthread_t *thread) {
+kthread_t *kthread_clone(kthread_t *thread)
+{
     return NULL;
 }
 
@@ -52,8 +81,8 @@ kthread_t *kthread_clone(kthread_t *thread) {
  *   - protect all accesses to shared data
  *   - don't forget to free thread's stack!
  */
-void kthread_destroy(kthread_t *thread) {
-
+void kthread_destroy(kthread_t *thread)
+{
 }
 
 /*
@@ -63,8 +92,8 @@ void kthread_destroy(kthread_t *thread) {
  *   - mark the thread as cancelled and stop executing
  *   - remember to the protect access to the thread
  */
-void kthread_cancel(kthread_t *thread, void *retval) {
-
+void kthread_cancel(kthread_t *thread, void *retval)
+{
 }
 
 /*
@@ -72,6 +101,6 @@ void kthread_cancel(kthread_t *thread, void *retval) {
  * Hints: there's (some but) not much to do here... remember, it's up to the
  * parent process to manage its threads!
  */
-void kthread_exit(void *retval) {
-
+void kthread_exit(void *retval)
+{
 }

@@ -75,6 +75,7 @@ proc_t *proc_create(const char *name)
     strcpy(new_proc->p_name, name);
 
     list_init(&new_proc->p_threads);
+
     // need to clone all of the parents' threads
     spinlock_init(&new_proc->p_threads_lock);
     list_init(&new_proc->p_children);
@@ -83,8 +84,16 @@ proc_t *proc_create(const char *name)
 
     list_link_init(&new_proc->p_list_link, new_proc);
     list_link_init(&new_proc->p_child_link, new_proc);
+
+    // add to parent's children list
+    spinlock_lock(&curproc->p_children_lock);
     list_insert(&curproc->p_children, &new_proc->p_child_link);
+    spinlock_unlock(&curproc->p_children_lock);
+
+    // add process to all process list
+    spinlock_lock(&proc_list_lock);
     list_insert(&proc_list, &new_proc->p_list_link);
+    spinlock_unlock(&proc_list_lock);
 
     idleproc.p_status = 0; // TODO: sus
     idleproc.p_state = PROC_PENDING;
@@ -110,6 +119,7 @@ void proc_destroy(proc_t *proc)
 void proc_cleanup()
 {
     curproc->p_state = PROC_DEAD;
+    spinlock_lock(&proc_list_lock);
     if (proc_list.head->next != NULL)
     {
         proc_t *prevproc = curproc;
@@ -122,10 +132,11 @@ void proc_cleanup()
         list_remove_front(&proc_list);
         proc_destroy(curproc);
     }
+    spinlock_unlock(&proc_list_lock);
 }
 
 /*
- * TODO: implement me!
+ * TODO: implement me! TODO: ask which thread
  * Hints: how should a process behave if all threads exit?
  */
 void proc_thread_exiting(void *retval)
@@ -151,10 +162,19 @@ void proc_thread_exiting(void *retval)
 void proc_kill(proc_t *proc, long status)
 {
     // lock the threads list
+    spinlock_lock(&proc->p_threads_lock);
+
     // iterate through threads in process
-    // call kthreads cancel
-    // dont know if this will remove the thread from the list or not, if not then remove it from the list
+    for (list_link_t *element = proc->p_threads.head; element != NULL;
+         element = element->next)
+    {
+        // call kthreads cancel
+        kthread_cancel(element->parent, &status);
+        list_remove_front(&proc->p_threads);
+    }
+
     // unlock the threads list
+    spinlock_unlock(&proc->p_threads_lock);
 }
 
 /*
@@ -166,4 +186,13 @@ void proc_kill(proc_t *proc, long status)
  */
 void proc_kill_all()
 {
+    spinlock_lock(&proc_list_lock);
+
+    for (list_link_t *element = proc_list.head; element != NULL;
+         element = element->next)
+    {
+        proc_kill(element->parent, -1);
+    }
+
+    spinlock_unlock(&proc_list_lock);
 }

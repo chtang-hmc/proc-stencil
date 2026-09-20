@@ -79,7 +79,7 @@ kthread_t *kthread_clone(kthread_t *thread)
     new_kthread->kt_retval = thread->kt_retval;
     new_kthread->kt_errno = thread->kt_errno;
 
-    context_setup(&new_kthread->kt_ctx, NULL, NULL, NULL,
+    context_setup(&new_kthread->kt_ctx, NULL, 0, NULL,
                   new_kthread->kt_kstack, DEFAULT_STACK_SIZE_PAGES, NULL);
 
     new_kthread->kt_proc = NULL;

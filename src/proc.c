@@ -36,7 +36,7 @@ void proc_idleproc_init()
 {
     idleproc.p_pid = next_pid;
     next_pid++;
-    strcpy(idleproc.p_name, "idleproc");
+    strncpy(idleproc.p_name, "idleproc", 8);
 
     list_init(&idleproc.p_threads);
     spinlock_init(&idleproc.p_threads_lock);
@@ -72,7 +72,7 @@ proc_t *proc_create(const char *name)
     proc_t *new_proc = slab_obj_alloc(proc_allocator);
     new_proc->p_pid = next_pid;
     next_pid++;
-    strcpy(new_proc->p_name, name);
+    strncpy(new_proc->p_name, name, strlen(name));
 
     list_init(&new_proc->p_threads);
 
@@ -125,7 +125,7 @@ void proc_cleanup()
         proc_t *prevproc = curproc;
         curproc = proc_list.head->next->parent;
         list_remove_front(&proc_list);
-        proc_destory(prevproc);
+        proc_destroy(prevproc);
     }
     else
     {
@@ -147,7 +147,7 @@ void proc_thread_exiting(void *retval)
     if (curproc->p_threads.head == NULL)
     {
         curproc->p_state = PROC_DEAD;
-        curproc->p_status = (long *)retval;
+        curproc->p_status = *(long *)retval;
     }
 
     spinlock_unlock(&curproc->p_threads_lock);

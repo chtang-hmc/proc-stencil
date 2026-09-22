@@ -44,9 +44,9 @@ void context_make_active(context_t *c) {
         "movq %1,%%rbp\n\t" // update rbp
         "movq %2,%%rsp\n\t" // update rsp
         "push %0\n\t"       // save rip onto the stack
-        "movq %3,%%rdi\n\t" // update rdi
         "movq %4,%%rsi\n\t" // update rsi
         "movq %5,%%rdx\n\t" // update rdx
+        "movq %3,%%rdi\n\t" // update rdi 
         "ret"               // jump to new rip (__context_thread_initial_func)
         ::"m"(c->c_rip), "m"(c->c_rbp), "m"(c->c_rsp),
           "m"(c->c_rdi), "m"(c->c_rsi), "m"(c->c_rdx)

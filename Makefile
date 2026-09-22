@@ -1,5 +1,5 @@
 CC = gcc
-FLAGS = -Og -g -Wall
+FLAGS = -Og -g -Wall -fsanitize=address
 LIBFLAGS = -c
 INCLUDE = -I. -Iinclude
 
@@ -49,6 +49,9 @@ boottest: $(ALL)
 
 forktest: $(ALL)
 	$(CC) $(FLAGS) $(INCLUDE) $(ALLOBJS) test/fork_test.c -o bin/fork_test
+
+multithreadtest: $(ALL)
+	$(CC) $(FLAGS) $(INCLUDE) $(ALLOBJS) test/multithread_test.c -o bin/multithread_test
 
 clean:
 	rm -f bin/*
